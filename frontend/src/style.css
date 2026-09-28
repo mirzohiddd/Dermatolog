@@ -1,0 +1,253 @@
+@import 'tailwindcss';
+
+/* ===== Brend tokenlari (logodan olingan) ===== */
+@theme {
+  --font-sans: 'Jost', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+
+  --color-paper: #ffffff;
+  --color-ink: #171717;
+  --color-graphite: #2e2e2e;
+  --color-stone: #6e6a64;
+  --color-mist: #a8a39b;
+  --color-line: #ece7de;
+  --color-cloud: #f7f5f1;
+
+  --color-gold: #b28238;
+  --color-gold-soft: #cfa76a;
+  --color-gold-ink: #8a6425;
+  --color-gold-wash: #fbf7f0;
+
+  --color-danger: #b42318;
+  --color-danger-wash: #fef3f2;
+
+  --shadow-card: 0 1px 2px rgb(23 23 23 / 0.04), 0 12px 32px -12px rgb(23 23 23 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(23 23 23 / 0.06), 0 18px 40px -14px rgb(138 100 37 / 0.35);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+    font-feature-settings: 'tnum' 0;
+  }
+  ::selection {
+    background: rgb(207 167 106 / 0.35);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .field-input {
+    @apply block h-12 w-full min-w-0 rounded-xl border border-line bg-paper px-4 text-[17px] text-ink placeholder:text-mist;
+    transition:
+      border-color 180ms ease,
+      box-shadow 220ms var(--ease-out-soft),
+      background-color 180ms ease;
+  }
+  .field-input:hover {
+    border-color: #ddd5c8;
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--color-gold);
+    box-shadow: 0 0 0 4px rgb(178 130 56 / 0.14);
+  }
+  .field-input[aria-invalid='true'] {
+    border-color: var(--color-danger);
+    background: var(--color-danger-wash);
+  }
+  .field-input[aria-invalid='true']:focus {
+    box-shadow: 0 0 0 4px rgb(180 35 24 / 0.12);
+  }
+  select.field-input {
+    appearance: none;
+    padding-right: 2.75rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%238a6425' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 8 5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+  }
+
+  .btn-primary {
+    @apply inline-flex h-13 w-full items-center justify-center gap-3 rounded-xl bg-graphite px-6 text-[15px] font-semibold tracking-[0.14em] text-paper;
+    box-shadow: 0 1px 2px rgb(23 23 23 / 0.2);
+    transition:
+      transform 220ms var(--ease-out-soft),
+      box-shadow 220ms var(--ease-out-soft),
+      background-color 200ms ease;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-ink);
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: var(--shadow-lift);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.99);
+  }
+  .btn-primary:disabled {
+    cursor: progress;
+    opacity: 0.85;
+  }
+
+  .btn-quiet {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-line bg-paper px-4 text-sm font-medium text-graphite;
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease;
+  }
+  .btn-quiet:hover:not(:disabled) {
+    border-color: var(--color-gold-soft);
+    background: var(--color-gold-wash);
+  }
+  .btn-quiet:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .card {
+    @apply rounded-[24px] border border-line bg-paper;
+    box-shadow: var(--shadow-card);
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ===== Sahifa ochilish animatsiyalari ===== */
+@keyframes logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes slide-from-left {
+  from {
+    opacity: 0;
+    transform: translate3d(-28px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes slide-from-right {
+  from {
+    opacity: 0;
+    transform: translate3d(28px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes spin-hex {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.anim-logo {
+  animation: logo-in 700ms var(--ease-out-soft) backwards;
+}
+.anim-left {
+  animation: slide-from-left 750ms var(--ease-out-soft) 120ms backwards;
+}
+.anim-right {
+  animation: slide-from-right 750ms var(--ease-out-soft) 220ms backwards;
+}
+.anim-rise {
+  animation: rise 520ms var(--ease-out-soft) backwards;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-cloud);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.7), transparent);
+  animation: shimmer 1.3s infinite;
+}
+
+/* Natija almashinuvi (Vue <Transition name="result">) */
+.result-enter-active {
+  transition:
+    opacity 450ms var(--ease-out-soft),
+    transform 450ms var(--ease-out-soft);
+}
+.result-leave-active {
+  transition: opacity 150ms ease;
+}
+.result-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+}
+.result-leave-to {
+  opacity: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 200ms ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Kichik ekranlarda harakat masofasini qisqartiramiz */
+@media (max-width: 767px) {
+  .anim-left,
+  .anim-right {
+    animation-name: rise;
+  }
+}
+
+/* Foydalanuvchi animatsiyani o‘chirgan bo‘lsa — hurmat qilamiz */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}

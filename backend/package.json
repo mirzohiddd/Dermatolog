@@ -1,0 +1,25 @@
+{
+  "name": "kaloriya-backend",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Komoliddin Kozimxonovich — kaloriya kalkulyatori API va Telegram bot",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --no-deprecation --watch --watch-path=src src/server.js",
+    "start": "node --no-deprecation src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "telegraf": "^4.16.3"
+  }
+}

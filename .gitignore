@@ -1,0 +1,24 @@
+# Kutubxonalar
+node_modules/
+
+# Maxfiy sozlamalar — HECH QACHON gitga yuklamang
+.env
+.env.local
+.env.*.local
+
+# Build natijasi
+frontend/dist/
+
+# Mijozlar ma'lumotlari (maxfiy!). Fayllar server ishga tushganda avtomatik yaratiladi.
+backend/data/*.json
+backend/data/*.bak
+backend/data/*.tmp
+backend/data/*.corrupt-*
+!backend/data/.gitkeep
+
+# Tizim fayllari
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
