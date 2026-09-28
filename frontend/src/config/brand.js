@@ -3,7 +3,7 @@
  */
 export const brand = {
   name: 'Komoliddin Kozimxonovich',
-  role: 'Dermatolog',
+  role: 'Nutritsiolog',
   doctorNote:
     'Kalkulyator natijasi — boshlang‘ich yo‘l-yo‘riq. Shaxsiy ovqatlanish rejasi uchun mutaxassis bilan maslahatlashing.',
 };
