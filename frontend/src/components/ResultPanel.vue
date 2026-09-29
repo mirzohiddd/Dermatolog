@@ -18,19 +18,16 @@ const TONES = {
     card: 'border-green-200 bg-green-50',
     text: 'text-green-700',
     dot: 'bg-green-500',
-    row: 'bg-green-50 ring-1 ring-green-200',
   },
   yellow: {
     card: 'border-amber-200 bg-amber-50',
     text: 'text-amber-700',
     dot: 'bg-amber-400',
-    row: 'bg-amber-50 ring-1 ring-amber-200',
   },
   red: {
     card: 'border-red-200 bg-red-50',
     text: 'text-red-700',
     dot: 'bg-red-500',
-    row: 'bg-red-50 ring-1 ring-red-200',
   },
 };
 
@@ -45,9 +42,8 @@ const metrics = computed(() => [
   { key: 'bmi', label: t('Tana vazni indeksi'), value: props.result.bmi, decimals: 1, note: t(bmi.value.label), highlight: true },
 ]);
 
-const scale = computed(() =>
-  BMI_SCALE.map((c) => ({ ...c, tones: TONES[c.tone], active: c.key === bmi.value.key })),
-);
+// Shkaladan faqat foydalanuvchining natijasi tushgan bitta qator
+const activeRow = computed(() => BMI_SCALE.find((c) => c.key === bmi.value.key));
 
 const macros = computed(() => {
   const r = props.result;
@@ -104,35 +100,21 @@ const macros = computed(() => {
       </div>
     </dl>
 
-    <!-- Tana vazni indeksi shkalasi: natija qaysi oraliqda ekanini rang bilan ko‘rsatadi -->
-    <div class="anim-rise rounded-2xl border border-line px-4 py-4 sm:px-5" style="animation-delay: 260ms">
-      <p class="mb-3 text-[15px] font-medium text-graphite">{{ t('Tana vazni indeksi') }}</p>
-      <ul class="space-y-1">
-        <li
-          v-for="c in scale"
-          :key="c.key"
-          class="flex items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-[14px] leading-snug transition-colors duration-500"
-          :class="c.active ? c.tones.row : ''"
-          :aria-current="c.active ? 'true' : undefined"
-        >
-          <span
-            class="mt-[5px] size-2.5 shrink-0 rounded-full"
-            :class="[c.tones.dot, c.active ? '' : 'opacity-60']"
-            aria-hidden="true"
-          />
-          <span class="min-w-0 flex-1" :class="c.active ? c.tones.text : 'text-stone'">
-            <span class="num font-semibold" :class="c.active ? '' : 'text-graphite'">{{ t(c.range) }}</span>
-            — {{ t(c.label) }}
-          </span>
-          <span
-            v-if="c.active"
-            class="num shrink-0 rounded-md bg-paper px-1.5 py-0.5 text-[12px] font-semibold"
-            :class="c.tones.text"
-          >
-            {{ result.bmi.toFixed(1) }}
-          </span>
-        </li>
-      </ul>
+    <!-- Tana vazni indeksi: faqat natija tushgan bitta qator, o‘z rangida -->
+    <div
+      v-if="activeRow"
+      class="anim-rise flex items-start gap-2.5 rounded-2xl border px-4 py-3.5 text-[14px] leading-snug transition-colors duration-500 sm:px-5"
+      :class="[bmiTone.card, bmiTone.text]"
+      style="animation-delay: 260ms"
+    >
+      <span class="mt-[5px] size-2.5 shrink-0 rounded-full" :class="bmiTone.dot" aria-hidden="true" />
+      <span class="min-w-0 flex-1">
+        <span class="num font-semibold">{{ t(activeRow.range) }}</span>
+        — {{ t(activeRow.label) }}
+      </span>
+      <span class="num shrink-0 rounded-md bg-paper px-1.5 py-0.5 text-[12px] font-semibold">
+        {{ result.bmi.toFixed(1) }}
+      </span>
     </div>
 
     <!-- Oqsil / Yog‘ / Uglevod -->
