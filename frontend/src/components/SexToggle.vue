@@ -1,12 +1,13 @@
 <script setup>
 import { SEXES } from '../utils/calculator.js';
+import { t } from '../i18n/script.js';
 
 const model = defineModel({ type: String, required: true });
 </script>
 
 <template>
   <fieldset>
-    <legend class="mb-2 block text-[15px] font-medium text-graphite">Jins</legend>
+    <legend class="mb-2 block text-[15px] font-medium text-graphite">{{ t('Jins') }}</legend>
     <div class="relative grid grid-cols-2 rounded-xl border border-line bg-cloud p-1">
       <span
         class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-lg bg-paper shadow-[0_1px_3px_rgb(23_23_23/0.12)] transition-transform duration-300 ease-[var(--ease-out-soft)]"
@@ -20,7 +21,7 @@ const model = defineModel({ type: String, required: true });
         :class="model === sex.key ? 'text-ink' : 'text-stone hover:text-graphite'"
       >
         <input v-model="model" type="radio" name="sex" :value="sex.key" class="sr-only" />
-        {{ sex.label }}
+        {{ t(sex.label) }}
       </label>
     </div>
   </fieldset>

@@ -10,7 +10,8 @@ function originalCalc(sex, age, h, w, af, goal) {
   const tdee = bmr * af;
   const target = tdee * mult;
   const bmi = w / (h / 100) ** 2;
-  const bmiText = bmi < 18.5 ? 'under' : bmi < 25 ? 'normal' : bmi < 30 ? 'over' : 'obese';
+  const bmiText =
+    bmi < 18.5 ? 'under' : bmi < 25 ? 'normal' : bmi < 30 ? 'over' : bmi < 35 ? 'obese1' : bmi < 40 ? 'obese2' : 'obese3';
   const protein = w * 1.8;
   const fat = w * 0.8;
   let carbs = (target - protein * 4 - fat * 9) / 4;
@@ -98,4 +99,23 @@ test('past BMI + vazn kamaytirish = ogohlantirish', () => {
   const r = backendCalc.calculate({ sex: 'female', age: 25, height: 175, weight: 50, activity: 'light', goal: 'lose20' });
   assert.equal(r.bmiCategory.key, 'under');
   assert.ok(r.warning);
+});
+
+test('BMI toifalari: 6 bosqich va ranglar', () => {
+  const cases = [
+    [17.9, 'under', 'yellow'],
+    [18.5, 'normal', 'green'],
+    [24.9, 'normal', 'green'],
+    [25, 'over', 'yellow'],
+    [30, 'obese1', 'red'],
+    [35, 'obese2', 'red'],
+    [39.9, 'obese2', 'red'],
+    [40, 'obese3', 'red'],
+    [55, 'obese3', 'red'],
+  ];
+  for (const [bmi, key, tone] of cases) {
+    const c = backendCalc.bmiCategory(bmi);
+    assert.equal(c.key, key, `BMI ${bmi}`);
+    assert.equal(c.tone, tone, `BMI ${bmi}`);
+  }
 });

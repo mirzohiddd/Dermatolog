@@ -2,10 +2,12 @@
 import { computed, nextTick, reactive, ref } from 'vue';
 import { endpoints, errorMessage } from '../services/api.js';
 import { getInitData, haptic } from '../services/telegram.js';
+import { t } from '../i18n/script.js';
 import { ACTIVITY_LEVELS, DEFAULTS, GOALS, calculate, validateInput } from '../utils/calculator.js';
 import FormField from './FormField.vue';
 import HexSpinner from './HexSpinner.vue';
 import ResultPanel from './ResultPanel.vue';
+import ScriptToggle from './ScriptToggle.vue';
 import SexToggle from './SexToggle.vue';
 
 const form = reactive({
@@ -107,9 +109,14 @@ async function submit() {
 
 <template>
   <section class="card @container p-5 sm:p-8" aria-labelledby="calc-title">
-    <header class="mb-7">
-      <h1 id="calc-title" class="text-[28px] leading-tight font-semibold text-ink sm:text-[32px]">Kaloriya kalkulyatori</h1>
-      <p class="mt-1.5 text-[17px] text-stone">Sog‘lom hayot sari birinchi qadam</p>
+    <header class="mb-7 flex flex-col-reverse gap-4 @sm:flex-row @sm:items-start @sm:justify-between">
+      <div class="min-w-0">
+        <h1 id="calc-title" class="text-[28px] leading-tight font-semibold text-ink sm:text-[32px]">
+          {{ t('Kaloriya kalkulyatori') }}
+        </h1>
+        <p class="mt-1.5 text-[17px] text-stone">{{ t('Sog‘lom hayot sari birinchi qadam') }}</p>
+      </div>
+      <ScriptToggle class="self-end @sm:self-start" />
     </header>
 
     <form novalidate class="space-y-5" @submit.prevent="submit">
@@ -120,8 +127,8 @@ async function submit() {
           v-for="f in numberFields"
           :id="`calc-${f.key}`"
           :key="f.key"
-          :label="f.label"
-          :error="errors[f.key]"
+          :label="t(f.label)"
+          :error="t(errors[f.key])"
         >
           <input
             :id="`calc-${f.key}`"
@@ -129,7 +136,7 @@ async function submit() {
             type="text"
             :inputmode="f.inputmode"
             autocomplete="off"
-            :placeholder="f.placeholder"
+            :placeholder="t(f.placeholder)"
             class="field-input num"
             :aria-invalid="errors[f.key] ? 'true' : 'false'"
             :aria-describedby="errors[f.key] ? `calc-${f.key}-error` : undefined"
@@ -140,25 +147,25 @@ async function submit() {
         </FormField>
       </div>
 
-      <FormField id="calc-activity" label="Faollik darajasi" :hint="activityHint" :error="errors.activity">
+      <FormField id="calc-activity" :label="t('Faollik darajasi')" :hint="t(activityHint)" :error="t(errors.activity)">
         <select id="calc-activity" v-model="form.activity" class="field-input" :aria-invalid="errors.activity ? 'true' : 'false'">
-          <option v-for="a in ACTIVITY_LEVELS" :key="a.key" :value="a.key">{{ a.label }}</option>
+          <option v-for="a in ACTIVITY_LEVELS" :key="a.key" :value="a.key">{{ t(a.label) }}</option>
         </select>
       </FormField>
 
-      <FormField id="calc-goal" label="Maqsad" :error="errors.goal">
+      <FormField id="calc-goal" :label="t('Maqsad')" :error="t(errors.goal)">
         <select id="calc-goal" v-model="form.goal" class="field-input" :aria-invalid="errors.goal ? 'true' : 'false'">
-          <option v-for="g in GOALS" :key="g.key" :value="g.key">{{ g.label }}</option>
+          <option v-for="g in GOALS" :key="g.key" :value="g.key">{{ t(g.label) }}</option>
         </select>
       </FormField>
 
       <Transition name="fade">
-        <p v-if="formError" class="rounded-xl bg-danger-wash px-4 py-3 text-sm text-danger" role="alert">{{ formError }}</p>
+        <p v-if="formError" class="rounded-xl bg-danger-wash px-4 py-3 text-sm text-danger" role="alert">{{ t(formError) }}</p>
       </Transition>
 
       <button type="submit" class="btn-primary" :disabled="loading" :aria-busy="loading">
         <HexSpinner v-if="loading" :size="20" />
-        <span>{{ loading ? 'HISOBLANMOQDA' : 'HISOBLASH' }}</span>
+        <span>{{ t(loading ? 'HISOBLANMOQDA' : 'HISOBLASH') }}</span>
       </button>
     </form>
 
@@ -169,8 +176,11 @@ async function submit() {
     </div>
 
     <p class="mt-7 border-t border-line pt-5 text-[13px] leading-relaxed text-stone">
-      Mifflin–St Jeor formulasi va standart faollik koeffitsientlari asosida taxminiy hisob. Bu tibbiy tashxis yoki
-      individual dietologik tavsiya o‘rnini bosmaydi.
+      {{
+        t(
+          'Mifflin–St Jeor formulasi va standart faollik koeffitsientlari asosida taxminiy hisob. Bu tibbiy tashxis yoki individual dietologik tavsiya o‘rnini bosmaydi.',
+        )
+      }}
     </p>
   </section>
 </template>

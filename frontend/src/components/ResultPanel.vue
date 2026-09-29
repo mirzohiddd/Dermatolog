@@ -1,44 +1,76 @@
 <script setup>
 import { computed } from 'vue';
 import AnimatedNumber from './AnimatedNumber.vue';
+import { t } from '../i18n/script.js';
+import { BMI_SCALE, bmiCategory } from '../utils/calculator.js';
 
 const props = defineProps({
   result: { type: Object, required: true },
   notice: { type: String, default: '' },
 });
 
+/**
+ * Rang sxemalari. Tailwind klasslari to‘liq yozilgan bo‘lishi shart
+ * (aks holda build paytida CSS ga tushmay qoladi).
+ */
+const TONES = {
+  green: {
+    card: 'border-green-200 bg-green-50',
+    text: 'text-green-700',
+    dot: 'bg-green-500',
+    row: 'bg-green-50 ring-1 ring-green-200',
+  },
+  yellow: {
+    card: 'border-amber-200 bg-amber-50',
+    text: 'text-amber-700',
+    dot: 'bg-amber-400',
+    row: 'bg-amber-50 ring-1 ring-amber-200',
+  },
+  red: {
+    card: 'border-red-200 bg-red-50',
+    text: 'text-red-700',
+    dot: 'bg-red-500',
+    row: 'bg-red-50 ring-1 ring-red-200',
+  },
+};
+
+// Toifani ekranda ko‘rsatilgan (yaxlitlangan) BMI bo‘yicha aniqlaymiz —
+// raqam va rang doim bir-biriga mos keladi.
+const bmi = computed(() => bmiCategory(props.result.bmi));
+const bmiTone = computed(() => TONES[bmi.value.tone]);
+
 const metrics = computed(() => [
-  { key: 'bmr', label: 'Ba‘zaviy ehtiyoj', value: props.result.bmr, unit: 'kcal', note: 'Tinch holatdagi sarf' },
-  { key: 'tdee', label: 'Jismoniy harakat sarfi', value: props.result.tdee, unit: 'kcal', note: 'Faollik bilan sarf' },
-  { key: 'bmi', label: 'Tana vazni indeksi', value: props.result.bmi, decimals: 1, note: props.result.bmiCategory.label, highlight: true },
+  { key: 'bmr', label: t('Ba‘zaviy ehtiyoj'), value: props.result.bmr, unit: t('kcal'), note: t('Tinch holatdagi sarf') },
+  { key: 'tdee', label: t('Jismoniy harakat sarfi'), value: props.result.tdee, unit: t('kcal'), note: t('Faollik bilan sarf') },
+  { key: 'bmi', label: t('Tana vazni indeksi'), value: props.result.bmi, decimals: 1, note: t(bmi.value.label), highlight: true },
 ]);
+
+const scale = computed(() =>
+  BMI_SCALE.map((c) => ({ ...c, tones: TONES[c.tone], active: c.key === bmi.value.key })),
+);
 
 const macros = computed(() => {
   const r = props.result;
   const items = [
-    { key: 'protein', label: 'Oqsil', grams: r.protein, kcal: r.protein * 4, color: 'bg-graphite' },
-    { key: 'fat', label: 'Yog‘', grams: r.fat, kcal: r.fat * 9, color: 'bg-gold' },
-    { key: 'carbs', label: 'Uglevod', grams: r.carbs, kcal: r.carbs * 4, color: 'bg-gold-soft' },
+    { key: 'protein', label: t('Oqsil'), grams: r.protein, kcal: r.protein * 4, color: 'bg-graphite' },
+    { key: 'fat', label: t('Yog‘'), grams: r.fat, kcal: r.fat * 9, color: 'bg-gold' },
+    { key: 'carbs', label: t('Uglevod'), grams: r.carbs, kcal: r.carbs * 4, color: 'bg-gold-soft' },
   ];
   const total = items.reduce((s, m) => s + m.kcal, 0) || 1;
   return items.map((m) => ({ ...m, share: Math.round((m.kcal / total) * 100) }));
 });
-
-const bmiTone = computed(() =>
-  props.result.bmiCategory.key === 'normal' ? 'text-gold-ink' : 'text-graphite',
-);
 </script>
 
 <template>
   <div class="space-y-4">
     <!-- Asosiy natija -->
     <div class="anim-rise rounded-2xl border border-gold-soft/60 bg-gold-wash px-5 py-5 sm:px-6">
-      <p class="text-[15px] font-medium text-gold-ink">Kunlik kaloriya</p>
+      <p class="text-[15px] font-medium text-gold-ink">{{ t('Kunlik kaloriya') }}</p>
       <p class="mt-1 flex items-baseline gap-2">
         <AnimatedNumber :value="result.targetCalories" class="text-[44px] leading-none font-semibold text-ink sm:text-[52px]" />
-        <span class="text-lg font-medium text-gold-ink">kcal</span>
+        <span class="text-lg font-medium text-gold-ink">{{ t('kcal') }}</span>
       </p>
-      <p class="mt-2 text-sm text-stone">Maqsad: {{ result.goalLabel }}, faollik: {{ result.activityLabel.toLowerCase() }}</p>
+      <p class="mt-2 text-sm text-stone">{{ t(`Maqsad: ${result.goalLabel}, faollik: ${result.activityLabel.toLowerCase()}`) }}</p>
     </div>
 
     <!-- Ba‘zaviy ehtiyoj / Jismoniy harakat sarfi / Tana vazni indeksi -->
@@ -46,7 +78,8 @@ const bmiTone = computed(() =>
       <div
         v-for="(m, i) in metrics"
         :key="m.key"
-        class="anim-rise min-w-0 rounded-2xl border border-line px-3 py-3.5 @md:px-4"
+        class="anim-rise min-w-0 rounded-2xl border px-3 py-3.5 transition-colors duration-500 @md:px-4"
+        :class="m.highlight ? bmiTone.card : 'border-line'"
         :style="{ animationDelay: `${80 + i * 70}ms` }"
       >
         <dt class="text-[13px] font-medium text-stone">{{ m.label }}</dt>
@@ -57,15 +90,54 @@ const bmiTone = computed(() =>
           <span v-if="m.unit" class="block text-xs text-stone @md:ml-1 @md:inline">{{ m.unit }}</span>
           <span v-else class="block text-xs text-transparent select-none @md:hidden" aria-hidden="true">.</span>
         </dd>
-        <dd class="mt-1.5 text-[12px] leading-snug @md:truncate" :class="m.highlight ? bmiTone + ' font-medium' : 'text-mist'" :title="m.note">
+        <dd
+          v-if="m.highlight"
+          class="mt-1.5 flex items-start gap-1.5 text-[12px] leading-snug font-semibold"
+          :class="bmiTone.text"
+        >
+          <span class="mt-[3px] size-2 shrink-0 rounded-full" :class="bmiTone.dot" aria-hidden="true" />
+          <span class="min-w-0 [overflow-wrap:anywhere]">{{ m.note }}</span>
+        </dd>
+        <dd v-else class="mt-1.5 text-[12px] leading-snug text-mist @md:truncate" :title="m.note">
           {{ m.note }}
         </dd>
       </div>
     </dl>
 
+    <!-- Tana vazni indeksi shkalasi: natija qaysi oraliqda ekanini rang bilan ko‘rsatadi -->
+    <div class="anim-rise rounded-2xl border border-line px-4 py-4 sm:px-5" style="animation-delay: 260ms">
+      <p class="mb-3 text-[15px] font-medium text-graphite">{{ t('Tana vazni indeksi') }}</p>
+      <ul class="space-y-1">
+        <li
+          v-for="c in scale"
+          :key="c.key"
+          class="flex items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-[14px] leading-snug transition-colors duration-500"
+          :class="c.active ? c.tones.row : ''"
+          :aria-current="c.active ? 'true' : undefined"
+        >
+          <span
+            class="mt-[5px] size-2.5 shrink-0 rounded-full"
+            :class="[c.tones.dot, c.active ? '' : 'opacity-60']"
+            aria-hidden="true"
+          />
+          <span class="min-w-0 flex-1" :class="c.active ? c.tones.text : 'text-stone'">
+            <span class="num font-semibold" :class="c.active ? '' : 'text-graphite'">{{ t(c.range) }}</span>
+            — {{ t(c.label) }}
+          </span>
+          <span
+            v-if="c.active"
+            class="num shrink-0 rounded-md bg-paper px-1.5 py-0.5 text-[12px] font-semibold"
+            :class="c.tones.text"
+          >
+            {{ result.bmi.toFixed(1) }}
+          </span>
+        </li>
+      </ul>
+    </div>
+
     <!-- Oqsil / Yog‘ / Uglevod -->
-    <div class="anim-rise rounded-2xl border border-line px-4 py-4 sm:px-5" style="animation-delay: 300ms">
-      <p class="mb-3 text-[15px] font-medium text-graphite">Oqsil, yog‘ va uglevod (taxminiy)</p>
+    <div class="anim-rise rounded-2xl border border-line px-4 py-4 sm:px-5" style="animation-delay: 340ms">
+      <p class="mb-3 text-[15px] font-medium text-graphite">{{ t('Oqsil, yog‘ va uglevod (taxminiy)') }}</p>
       <div class="mb-4 flex h-2 overflow-hidden rounded-full bg-cloud" aria-hidden="true">
         <span
           v-for="m in macros"
@@ -82,9 +154,9 @@ const bmiTone = computed(() =>
             {{ m.label }}
           </span>
           <span class="mt-0.5 block text-[22px] leading-tight font-semibold text-ink">
-            <AnimatedNumber :value="m.grams" /><span class="ml-0.5 text-sm font-medium text-stone">g</span>
+            <AnimatedNumber :value="m.grams" /><span class="ml-0.5 text-sm font-medium text-stone">{{ t('g') }}</span>
           </span>
-          <span class="num text-[12px] text-mist">{{ m.share }}% kaloriya</span>
+          <span class="num text-[12px] text-mist">{{ m.share }}% {{ t('kaloriya') }}</span>
         </li>
       </ul>
     </div>
@@ -92,15 +164,15 @@ const bmiTone = computed(() =>
     <div
       v-if="result.warning"
       class="anim-rise flex gap-3 rounded-2xl border border-gold/40 bg-gold-wash px-4 py-3.5 text-sm leading-relaxed text-graphite"
-      style="animation-delay: 380ms"
+      style="animation-delay: 420ms"
       role="note"
     >
       <svg class="mt-0.5 size-5 shrink-0 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
         <path d="M12 3 2.5 20h19L12 3Z" stroke-linejoin="round" /><path d="M12 10v4.5M12 17.2v.3" stroke-linecap="round" />
       </svg>
-      <p><span class="font-semibold">Diqqat:</span> {{ result.warning }}</p>
+      <p><span class="font-semibold">{{ t('Diqqat:') }}</span> {{ t(result.warning) }}</p>
     </div>
 
-    <p v-if="notice" class="text-[13px] text-stone">{{ notice }}</p>
+    <p v-if="notice" class="text-[13px] text-stone">{{ t(notice) }}</p>
   </div>
 </template>

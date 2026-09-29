@@ -108,11 +108,23 @@ export function validateInput(raw = {}) {
   return { valid: Object.keys(errors).length === 0, errors, values };
 }
 
+/**
+ * Tana vazni indeksi (BMI) shkalasi — JSST tasnifi.
+ * tone: 'yellow' | 'green' | 'red' — natija rangini belgilaydi.
+ * `max` — shu chegaradan kichik bo‘lsa, shu toifa (oxirgisida chegara yo‘q).
+ */
+export const BMI_SCALE = [
+  { key: 'under', max: 18.5, range: '18,5 dan past', label: 'Vazn yetishmovchiligi', tone: 'yellow' },
+  { key: 'normal', max: 25, range: '18,5–24,9', label: 'Me’yoriy vazn', tone: 'green' },
+  { key: 'over', max: 30, range: '25,0–29,9', label: 'Ortiqcha vazn', tone: 'yellow' },
+  { key: 'obese1', max: 35, range: '30,0–34,9', label: 'I darajali semizlik', tone: 'red' },
+  { key: 'obese2', max: 40, range: '35,0–39,9', label: 'II darajali semizlik', tone: 'red' },
+  { key: 'obese3', max: Infinity, range: '40 va undan yuqori', label: 'III darajali semizlik', tone: 'red' },
+];
+
 export function bmiCategory(bmi) {
-  if (bmi < 18.5) return { key: 'under', label: 'Past vazn' };
-  if (bmi < 25) return { key: 'normal', label: 'Me’yor oralig‘i' };
-  if (bmi < 30) return { key: 'over', label: 'Ortiqcha vazn' };
-  return { key: 'obese', label: 'Semizlik diapazoni' };
+  const found = BMI_SCALE.find((c) => bmi < c.max) || BMI_SCALE[BMI_SCALE.length - 1];
+  return { key: found.key, label: found.label, tone: found.tone };
 }
 
 /**

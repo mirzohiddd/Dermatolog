@@ -5,6 +5,7 @@ import CalculatorCard from '../components/CalculatorCard.vue';
 import DoctorCard from '../components/DoctorCard.vue';
 import { endpoints } from '../services/api.js';
 import { getInitData, isInsideTelegram } from '../services/telegram.js';
+import { t } from '../i18n/script.js';
 
 onMounted(() => {
   // Telegram ichida ochilgan bo‘lsa — foydalanuvchini ro‘yxatga olamiz / faolligini yangilaymiz
@@ -23,14 +24,14 @@ onMounted(() => {
         <div class="anim-left min-w-0">
           <CalculatorCard />
         </div>
-        <aside class="anim-right min-w-0 md:sticky md:top-8" aria-label="Dermatolog">
+        <aside class="anim-right min-w-0 md:sticky md:top-8" :aria-label="t('Nutritsiolog')">
           <DoctorCard />
         </aside>
       </div>
     </main>
 
     <footer class="border-t border-line py-6 text-center text-[13px] text-mist">
-      © {{ new Date().getFullYear() }} Komoliddin Kozimxonovich
+      © {{ new Date().getFullYear() }} {{ t('Komoliddin Kozimxonovich') }}
     </footer>
   </div>
 </template>
