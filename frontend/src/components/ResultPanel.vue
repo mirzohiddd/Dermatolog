@@ -8,9 +8,9 @@ const props = defineProps({
 });
 
 const metrics = computed(() => [
-  { key: 'bmr', label: 'BMR', value: props.result.bmr, unit: 'kcal', note: 'Tinch holatdagi sarf' },
-  { key: 'tdee', label: 'TDEE', value: props.result.tdee, unit: 'kcal', note: 'Faollik bilan sarf' },
-  { key: 'bmi', label: 'BMI', value: props.result.bmi, decimals: 1, note: props.result.bmiCategory.label, highlight: true },
+  { key: 'bmr', label: 'Ba‘zaviy ehtiyoj', value: props.result.bmr, unit: 'kcal', note: 'Tinch holatdagi sarf' },
+  { key: 'tdee', label: 'Jismoniy harakat sarfi', value: props.result.tdee, unit: 'kcal', note: 'Faollik bilan sarf' },
+  { key: 'bmi', label: 'Tana vazni indeksi', value: props.result.bmi, decimals: 1, note: props.result.bmiCategory.label, highlight: true },
 ]);
 
 const macros = computed(() => {
@@ -41,7 +41,7 @@ const bmiTone = computed(() =>
       <p class="mt-2 text-sm text-stone">Maqsad: {{ result.goalLabel }}, faollik: {{ result.activityLabel.toLowerCase() }}</p>
     </div>
 
-    <!-- BMR / TDEE / BMI -->
+    <!-- Ba‘zaviy ehtiyoj / Jismoniy harakat sarfi / Tana vazni indeksi -->
     <dl class="grid grid-cols-3 gap-2 @md:gap-3">
       <div
         v-for="(m, i) in metrics"
