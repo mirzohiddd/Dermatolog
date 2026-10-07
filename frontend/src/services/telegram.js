@@ -29,6 +29,15 @@ export function initTelegram() {
   }
 }
 
+/** Web App oynasini yopadi (botga qaytadi). Telegramdan tashqarida hech narsa qilmaydi. */
+export function closeWebApp() {
+  try {
+    webApp()?.close?.();
+  } catch {
+    /* qo‘llab-quvvatlanmaydi */
+  }
+}
+
 export function haptic(type = 'success') {
   try {
     webApp()?.HapticFeedback?.notificationOccurred(type);

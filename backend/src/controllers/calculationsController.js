@@ -1,26 +1,20 @@
-import { config } from '../config/env.js';
 import { createCalculation, listCalculations } from '../services/calculationService.js';
-import { notifyNewCalculation, notifyNewUser } from '../services/notificationService.js';
-import { verifyInitData } from '../services/telegramAuth.js';
+import { notifyNewCalculation } from '../services/notificationService.js';
 import { findUserById } from '../services/userService.js';
 import { badRequest, notFound } from '../utils/httpError.js';
 import { parseId, parsePagination } from '../utils/validators.js';
 
-/** POST /api/calculations — hisoblaydi, saqlaydi, adminlarga xabar yuboradi. */
+/**
+ * POST /api/calculations — hisoblaydi, saqlaydi, adminlarga xabar yuboradi.
+ * Bu yerga faqat imzosi to‘g‘ri va statusi `approved` bo‘lgan Telegram foydalanuvchi yetib keladi
+ * (`requireTelegramAccess` middleware).
+ */
 export async function postCalculation(req, res) {
   const body = req.body;
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw badRequest('So‘rov tanasi bo‘sh');
 
-  let tgUser = null;
-  if (body.initData) {
-    const verified = verifyInitData(body.initData, config.botToken, { maxAgeSeconds: config.initDataMaxAgeSeconds });
-    if (verified.ok) tgUser = verified.user;
-    else console.warn(`[calc] initData qabul qilinmadi (${verified.reason}) — hisob mehmon sifatida saqlanadi`);
-  }
+  const { calculation, result, user } = await createCalculation(body, req.accessUser);
 
-  const { calculation, result, user, userIsNew } = await createCalculation(body, tgUser);
-
-  if (userIsNew) notifyNewUser(user);
   notifyNewCalculation(calculation, user);
 
   res.status(201).json({ id: calculation.id, createdAt: calculation.createdAt, linkedToTelegram: Boolean(user), result });

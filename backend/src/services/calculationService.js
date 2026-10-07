@@ -1,7 +1,6 @@
 import { db } from './db.js';
 import { JsonDatabase } from './jsonDatabase.js';
 import { calculate, validateInput } from './calculator.js';
-import { upsertTelegramUser } from './userService.js';
 import { badRequest } from '../utils/httpError.js';
 
 /**
@@ -9,24 +8,13 @@ import { badRequest } from '../utils/httpError.js';
  * Natija serverda qayta hisoblanadi — brauzerdan kelgan raqamlarga ishonilmaydi.
  *
  * @param {object} input       — { sex, age, height, weight, activity, goal }
- * @param {object|null} tgUser — imzosi tekshirilgan Telegram foydalanuvchi (yoki null)
+ * @param {object|null} user   — bazadagi (admin tasdiqlagan) foydalanuvchi yozuvi
  */
-export async function createCalculation(input, tgUser = null) {
+export async function createCalculation(input, user = null) {
   const { valid, errors, values } = validateInput(input);
   if (!valid) throw badRequest('Ma’lumotlarda xatolik bor', errors);
 
   const result = calculate(values);
-
-  let user = null;
-  let userIsNew = false;
-  if (tgUser) {
-    const upserted = await upsertTelegramUser(
-      { id: tgUser.telegramId, username: tgUser.username, first_name: tgUser.firstName, last_name: tgUser.lastName },
-      { source: 'webapp' },
-    );
-    user = upserted.user;
-    userIsNew = upserted.isNew;
-  }
 
   const calculation = await db.update('calculations', (items) => {
     const record = {
@@ -53,7 +41,7 @@ export async function createCalculation(input, tgUser = null) {
     return record;
   });
 
-  return { calculation, result, user, userIsNew };
+  return { calculation, result, user };
 }
 
 export async function listCalculations({ page = 1, limit = 20, userId = null } = {}) {

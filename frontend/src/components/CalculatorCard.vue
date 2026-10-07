@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, reactive, ref } from 'vue';
-import { endpoints, errorMessage } from '../services/api.js';
+import { accessDeniedStatus, endpoints, errorMessage } from '../services/api.js';
 import { getInitData, haptic } from '../services/telegram.js';
 import { t } from '../i18n/script.js';
 import { ACTIVITY_LEVELS, DEFAULTS, GOALS, calculate, validateInput } from '../utils/calculator.js';
@@ -9,6 +9,8 @@ import HexSpinner from './HexSpinner.vue';
 import ResultPanel from './ResultPanel.vue';
 import ScriptToggle from './ScriptToggle.vue';
 import SexToggle from './SexToggle.vue';
+
+const emit = defineEmits(['access-denied']);
 
 const form = reactive({
   sex: DEFAULTS.sex,
@@ -92,7 +94,22 @@ async function submit() {
       loading.value = false;
       return;
     }
-    // Server bilan aloqa yo‘q — natijani qurilmaning o‘zida hisoblaymiz (formula bir xil)
+    // Ruxsat yo‘q (401 / 403) — kalkulyator yopiladi, lokal hisoblash QILINMAYDI
+    const denied = accessDeniedStatus(error);
+    if (denied) {
+      loading.value = false;
+      haptic('error');
+      emit('access-denied', denied);
+      return;
+    }
+    if (error.response) {
+      // Serverda boshqa xatolik — natija ko‘rsatilmaydi
+      formError.value = errorMessage(error);
+      loading.value = false;
+      return;
+    }
+    // Server bilan aloqa yo‘q (internet uzildi) — ruxsat avval tasdiqlangan,
+    // natijani qurilmaning o‘zida hisoblaymiz (formula bir xil)
     result.value = calculate(values);
     notice.value = 'Natija qurilmangizda hisoblandi, lekin serverga saqlanmadi.';
   }

@@ -19,8 +19,11 @@ export function setUnauthorizedHandler(fn) {
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    const isLogin = error.config?.url?.includes('/auth/login');
-    if (error.response?.status === 401 && session.token && !isLogin) {
+    const url = error.config?.url || '';
+    const isLogin = url.includes('/auth/login');
+    // Telegram foydalanuvchi tekshiruvi (POST /access, POST /calculations) admin sessiyasiga tegishli emas
+    const isTelegramPost = error.config?.method === 'post' && (url.startsWith('/access') || url.startsWith('/calculations'));
+    if (error.response?.status === 401 && session.token && !isLogin && !isTelegramPost) {
       clearSession();
       onUnauthorized?.();
     }
@@ -36,8 +39,23 @@ export function errorMessage(error) {
   return 'Kutilmagan xatolik yuz berdi. Qayta urinib ko‘ring.';
 }
 
+/**
+ * Kirish ruxsati xatosini aniqlaydi.
+ * @returns {'pending'|'rejected'|'unauthenticated'|null}
+ */
+export function accessDeniedStatus(error) {
+  const status = error?.response?.status;
+  if (status === 401) return 'unauthenticated';
+  if (status === 403) {
+    const s = error.response.data?.details?.status;
+    return s === 'rejected' ? 'rejected' : 'pending';
+  }
+  return null;
+}
+
 export const endpoints = {
   registerUser: (initData) => api.post('/users', { initData }),
+  checkAccess: (initData) => api.post('/access', { initData }),
   calculate: (payload) => api.post('/calculations', payload),
   login: (username, password) => api.post('/auth/login', { username, password }),
   stats: () => api.get('/admin/stats'),

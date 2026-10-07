@@ -1,14 +1,23 @@
 import { config } from '../config/env.js';
+import { requestAdminApproval } from '../services/accessService.js';
 import { db } from '../services/db.js';
-import { notifyNewUser } from '../services/notificationService.js';
 import { verifyInitData } from '../services/telegramAuth.js';
-import { findUserById, listUsers, normalizeSource, toPublicUser, upsertTelegramUser } from '../services/userService.js';
+import {
+  USER_STATUS,
+  findUserById,
+  getUserStatus,
+  listUsers,
+  normalizeSource,
+  toPublicUser,
+  upsertTelegramUser,
+} from '../services/userService.js';
 import { badRequest, notFound, unauthorized } from '../utils/httpError.js';
 import { parseId, parsePagination, parseSearch } from '../utils/validators.js';
 
 /**
  * POST /api/users — Telegram Web App ochilganda foydalanuvchini ro‘yxatga oladi.
  * Faqat Telegram imzosi to‘g‘ri bo‘lsa qabul qilinadi (soxta foydalanuvchi yaratib bo‘lmaydi).
+ * Yangi foydalanuvchi `pending` bo‘ladi va adminlarga (bir marta) so‘rov yuboriladi.
  */
 export async function registerUser(req, res) {
   const { initData } = req.body ?? {};
@@ -21,9 +30,10 @@ export async function registerUser(req, res) {
     { id: verified.user.telegramId, username: verified.user.username, first_name: verified.user.firstName, last_name: verified.user.lastName },
     { source: normalizeSource(verified.startParam, 'webapp') },
   );
-  if (isNew) notifyNewUser(user);
+  const status = getUserStatus(user);
+  if (status === USER_STATUS.PENDING) requestAdminApproval(user);
 
-  res.status(isNew ? 201 : 200).json({ user: { id: user.id, firstName: user.firstName }, isNew });
+  res.status(isNew ? 201 : 200).json({ user: { id: user.id, firstName: user.firstName, status }, isNew });
 }
 
 export async function getUsers(req, res) {

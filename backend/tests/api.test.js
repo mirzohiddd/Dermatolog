@@ -9,7 +9,7 @@ const { createApp } = await import('../src/app.js');
 const { db } = await import('../src/services/db.js');
 const { setTelegramClient } = await import('../src/services/notificationService.js');
 const { signInitData } = await import('../src/services/telegramAuth.js');
-const { upsertTelegramUser } = await import('../src/services/userService.js');
+const { setUserStatus, upsertTelegramUser } = await import('../src/services/userService.js');
 
 const tg = fakeTelegram();
 let server;
@@ -39,30 +39,93 @@ const validInput = { sex: 'male', age: 25, height: 175, weight: 75, activity: 'm
 const initDataFor = (user, extra = {}) =>
   signInitData({ auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify(user), ...extra }, TEST_BOT_TOKEN);
 
+const ALI = { id: 555000111, first_name: 'Ali', last_name: 'Valiyev', username: 'ali' };
+
 test('health', async () => {
   const r = await api('GET', '/api/health');
   assert.equal(r.status, 200);
   assert.equal(r.body.status, 'ok');
 });
 
-test('POST /api/calculations — mehmon (Telegramsiz) hisoblash saqlanadi', async () => {
+test('POST /api/calculations — Telegramsiz (initData yo‘q) 401, hech narsa saqlanmaydi', async () => {
   tg.calls.length = 0;
   const r = await api('POST', '/api/calculations', validInput);
-  assert.equal(r.status, 201);
-  assert.equal(r.body.linkedToTelegram, false);
-  assert.equal(r.body.result.bmr, 1724); // 750 + 1093.75 - 125 + 5 = 1723.75
+  assert.equal(r.status, 401);
+  assert.equal(r.body.details.status, 'unauthenticated');
   await settle();
   const saved = JSON.parse(await fs.readFile(path.join(dataDir, 'calculations.json'), 'utf8'));
-  assert.equal(saved.length, 1);
-  assert.equal(saved[0].userId, null);
-  assert.equal(saved[0].targetCalories, r.body.result.targetCalories);
-  assert.deepEqual(new Set(tg.calls.map((c) => c.chat_id)), new Set([ADMIN_1, ADMIN_2]));
-  assert.match(tg.calls[0].text, /YANGI HISOBLASH/);
-  assert.match(tg.calls[0].text, /Sayt mehmoni/);
+  assert.equal(saved.length, 0);
+  assert.equal(tg.calls.length, 0);
 });
 
-test('POST /api/calculations — validatsiya xatolari 400 bilan qaytadi', async () => {
-  const r = await api('POST', '/api/calculations', { ...validInput, age: -3, height: '', weight: 'abc' });
+test('POST /api/access — initData yo‘q yoki soxta bo‘lsa 401', async () => {
+  assert.equal((await api('POST', '/api/access', {})).status, 401);
+  const forged = initDataFor({ id: 999, first_name: 'Hacker' }).replace(/hash=[a-f0-9]+/, 'hash=' + 'a'.repeat(64));
+  assert.equal((await api('POST', '/api/access', { initData: forged })).status, 401);
+  assert.equal((await api('POST', '/api/calculations', { ...validInput, initData: forged })).status, 401);
+  const old = signInitData({ auth_date: '1000', user: JSON.stringify({ id: 5, first_name: 'X' }) }, TEST_BOT_TOKEN);
+  assert.equal((await api('POST', '/api/access', { initData: old })).status, 401);
+  assert.ok(!(await db.read('users')).some((u) => u.telegramId === '999'));
+});
+
+test('yangi foydalanuvchi — pending: /api/access va /api/calculations 403, adminlarga BIR MARTA tugmali xabar', async () => {
+  tg.calls.length = 0;
+  const initData = initDataFor(ALI);
+
+  const a1 = await api('POST', '/api/access', { initData });
+  assert.equal(a1.status, 403);
+  assert.equal(a1.body.details.status, 'pending');
+
+  const c1 = await api('POST', '/api/calculations', { ...validInput, initData });
+  assert.equal(c1.status, 403);
+  assert.equal(c1.body.details.status, 'pending');
+
+  await api('POST', '/api/access', { initData });
+  await settle();
+
+  const users = await db.read('users');
+  assert.equal(users.filter((u) => u.telegramId === '555000111').length, 1, 'dublikat bo‘lmasligi kerak');
+  assert.equal(users[0].status, 'pending');
+  assert.equal((await db.read('calculations')).length, 0, 'pending foydalanuvchi hisoblay olmaydi');
+
+  const notes = tg.calls.filter((c) => /Yangi foydalanuvchi/.test(c.text || ''));
+  assert.deepEqual(notes.map((n) => n.chat_id).sort(), [ADMIN_1, ADMIN_2].sort(), 'har bir adminga faqat bitta xabar');
+  assert.match(notes[0].text, /⏳ Status: Pending/);
+  const buttons = notes[0].reply_markup.inline_keyboard[0];
+  assert.equal(buttons[0].text, '✅ RUXSAT BERISH');
+  assert.equal(buttons[0].callback_data, 'access:approve:555000111');
+  assert.equal(buttons[1].text, '❌ RAD ETISH');
+  assert.equal(buttons[1].callback_data, 'access:reject:555000111');
+  assert.equal(tg.calls.filter((c) => /YANGI HISOBLASH/.test(c.text || '')).length, 0);
+});
+
+test('approved — /api/access 200, hisoblash saqlanadi va foydalanuvchiga bog‘lanadi', async () => {
+  await setUserStatus('555000111', 'approved', { by: ADMIN_1 });
+  tg.calls.length = 0;
+  const initData = initDataFor(ALI);
+
+  const a = await api('POST', '/api/access', { initData });
+  assert.equal(a.status, 200);
+  assert.equal(a.body.allowed, true);
+  assert.equal(a.body.status, 'approved');
+
+  const r = await api('POST', '/api/calculations', { ...validInput, initData });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.linkedToTelegram, true);
+  assert.equal(r.body.result.bmr, 1724); // 750 + 1093.75 - 125 + 5 = 1723.75
+  await settle();
+  const saved = await db.read('calculations');
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].telegramId, '555000111');
+  const notes = tg.calls.filter((c) => /YANGI HISOBLASH/.test(c.text));
+  assert.deepEqual(new Set(notes.map((c) => c.chat_id)), new Set([ADMIN_1, ADMIN_2]));
+  assert.match(notes[0].text, /Ali Valiyev[\s\S]*555000111[\s\S]*75 kg[\s\S]*175 cm/);
+  assert.equal(tg.calls.filter((c) => /Yangi foydalanuvchi/.test(c.text || '')).length, 0, 'qayta so‘rov yuborilmaydi');
+});
+
+test('POST /api/calculations — validatsiya xatolari 400 bilan qaytadi (approved foydalanuvchi)', async () => {
+  const initData = initDataFor(ALI);
+  const r = await api('POST', '/api/calculations', { ...validInput, age: -3, height: '', weight: 'abc', initData });
   assert.equal(r.status, 400);
   assert.equal(r.body.details.age, 'Manfiy son bo‘lishi mumkin emas');
   assert.equal(r.body.details.height, 'Bo‘yingizni kiriting');
@@ -70,43 +133,45 @@ test('POST /api/calculations — validatsiya xatolari 400 bilan qaytadi', async 
   const r2 = await api('POST', '/api/calculations', '{ noto‘g‘ri json');
   assert.equal(r2.status, 400);
   const r3 = await api('POST', '/api/calculations', [1, 2]);
-  assert.equal(r3.status, 400);
+  assert.equal(r3.status, 401);
 });
 
-test('POST /api/calculations — Telegram imzosi to‘g‘ri bo‘lsa foydalanuvchiga bog‘lanadi', async () => {
-  tg.calls.length = 0;
-  const initData = initDataFor({ id: 555000111, first_name: 'Ali', last_name: 'Valiyev', username: 'ali' });
-  const r = await api('POST', '/api/calculations', { ...validInput, initData });
-  assert.equal(r.status, 201);
-  assert.equal(r.body.linkedToTelegram, true);
-  await settle();
-  const users = await db.read('users');
-  assert.equal(users.length, 1);
-  assert.equal(users[0].telegramId, '555000111');
-  assert.equal(users[0].source, 'webapp');
-  // yangi mijoz + yangi hisoblash — har biri 2 adminga
-  assert.equal(tg.calls.filter((c) => /YANGI MIJOZ/.test(c.text)).length, 2);
-  assert.equal(tg.calls.filter((c) => /YANGI HISOBLASH/.test(c.text)).length, 2);
-  assert.match(tg.calls.find((c) => /YANGI HISOBLASH/.test(c.text)).text, /Ali Valiyev[\s\S]*555000111[\s\S]*75 kg[\s\S]*175 cm/);
+test('rejected — 403, hisoblash saqlanmaydi', async () => {
+  const user = { id: 444000222, first_name: 'Rad' };
+  await upsertTelegramUser(user);
+  await setUserStatus('444000222', 'rejected', { by: ADMIN_2 });
+  const initData = initDataFor(user);
+  const a = await api('POST', '/api/access', { initData });
+  assert.equal(a.status, 403);
+  assert.equal(a.body.details.status, 'rejected');
+  const c = await api('POST', '/api/calculations', { ...validInput, initData });
+  assert.equal(c.status, 403);
+  assert.equal((await db.read('calculations')).filter((x) => x.telegramId === '444000222').length, 0);
 });
 
-test('soxta imzo — Telegram ID ga ishonilmaydi', async () => {
-  const forged = initDataFor({ id: 999, first_name: 'Hacker' }).replace(/hash=[a-f0-9]+/, 'hash=' + 'a'.repeat(64));
-  const r = await api('POST', '/api/calculations', { ...validInput, initData: forged });
-  assert.equal(r.status, 201);
-  assert.equal(r.body.linkedToTelegram, false);
-  const r2 = await api('POST', '/api/users', { initData: forged });
-  assert.equal(r2.status, 401);
-  const old = signInitData({ auth_date: '1000', user: JSON.stringify({ id: 5, first_name: 'X' }) }, TEST_BOT_TOKEN);
-  assert.equal((await api('POST', '/api/users', { initData: old })).status, 401);
-  assert.ok(!(await db.read('users')).some((u) => u.telegramId === '999'));
+test('eski foydalanuvchi (status yo‘q) — pending deb hisoblanadi', async () => {
+  await db.update('users', (users) => {
+    users.push({ id: 900, telegramId: '333000999', username: null, firstName: 'Eski', lastName: null, source: 'direct', startedAt: new Date().toISOString(), lastActiveAt: new Date().toISOString() });
+  });
+  const r = await api('POST', '/api/access', { initData: initDataFor({ id: 333000999, first_name: 'Eski' }) });
+  assert.equal(r.status, 403);
+  assert.equal(r.body.details.status, 'pending');
+  const saved = (await db.read('users')).find((u) => u.telegramId === '333000999');
+  assert.equal(saved.status, 'pending');
 });
 
-test('POST /api/users — Web App orqali ro‘yxat, dublikat yaratilmaydi', async () => {
+test('.env dagi admin — avtomatik approved', async () => {
+  const r = await api('POST', '/api/access', { initData: initDataFor({ id: Number(ADMIN_1), first_name: 'Admin' }) });
+  assert.equal(r.status, 200);
+  assert.equal((await db.read('users')).find((u) => u.telegramId === ADMIN_1).status, 'approved');
+});
+
+test('POST /api/users — Web App orqali ro‘yxat, dublikat yaratilmaydi, status qaytadi', async () => {
   const initData = initDataFor({ id: 777888999, first_name: 'Dilnoza', username: 'dilnoza' });
   const r1 = await api('POST', '/api/users', { initData });
   assert.equal(r1.status, 201);
   assert.equal(r1.body.isNew, true);
+  assert.equal(r1.body.user.status, 'pending');
   const r2 = await api('POST', '/api/users', { initData });
   assert.equal(r2.status, 200);
   assert.equal(r2.body.isNew, false);
@@ -137,31 +202,32 @@ test('POST /api/auth/login — noto‘g‘ri va to‘g‘ri parol', async () => 
 });
 
 test('GET /api/admin/stats', async () => {
+  const users = await db.read('users');
   const r = await api('GET', '/api/admin/stats', undefined, auth());
   assert.equal(r.status, 200);
-  assert.equal(r.body.totalUsers, 2);
-  assert.equal(r.body.todayUsers, 2);
-  assert.equal(r.body.totalCalculations, 3);
-  assert.equal(r.body.todayCalculations, 3);
-  assert.equal(r.body.bySource.webapp, 2);
+  assert.equal(r.body.totalUsers, users.length);
+  assert.equal(r.body.totalCalculations, 1);
+  assert.equal(r.body.todayCalculations, 1);
+  assert.equal(r.body.bySource.webapp, 3);
 });
 
-test('GET /api/users — qidiruv (ism, username, ID) va sahifalash', async () => {
+test('GET /api/users — qidiruv (ism, username, ID), sahifalash va status', async () => {
+  const before = (await db.read('users')).length;
   for (let i = 0; i < 25; i++) {
     await upsertTelegramUser({ id: 100000 + i, first_name: `Mijoz${i}`, username: `user_${i}` }, { source: 'instagram' });
   }
+  const total = before + 25;
   const p1 = await api('GET', '/api/users?page=1&limit=10', undefined, auth());
   assert.equal(p1.status, 200);
-  assert.equal(p1.body.total, 27);
+  assert.equal(p1.body.total, total);
   assert.equal(p1.body.items.length, 10);
-  assert.equal(p1.body.totalPages, 3);
-  assert.equal(p1.body.items[0].id, 27); // eng yangisi birinchi
-  const p3 = await api('GET', '/api/users?page=3&limit=10', undefined, auth());
-  assert.equal(p3.body.items.length, 7);
+  assert.equal(p1.body.totalPages, Math.ceil(total / 10));
+  assert.equal(p1.body.items[0].status, 'pending');
 
   const byName = await api('GET', '/api/users?search=valiyev', undefined, auth());
   assert.equal(byName.body.total, 1);
   assert.equal(byName.body.items[0].calculationsCount, 1);
+  assert.equal(byName.body.items[0].status, 'approved');
   const byUsername = await api('GET', `/api/users?search=${encodeURIComponent('@dilnoza')}`, undefined, auth());
   assert.equal(byUsername.body.items[0].firstName, 'Dilnoza');
   const byId = await api('GET', '/api/users?search=100007', undefined, auth());
@@ -173,7 +239,7 @@ test('GET /api/users — qidiruv (ism, username, ID) va sahifalash', async () =>
 
 test('GET /api/users/:id va GET /api/calculations/:userId — tarix', async () => {
   const ali = (await db.read('users')).find((u) => u.telegramId === '555000111');
-  await api('POST', '/api/calculations', { ...validInput, weight: 80, initData: initDataFor({ id: 555000111, first_name: 'Ali', last_name: 'Valiyev', username: 'ali' }) });
+  await api('POST', '/api/calculations', { ...validInput, weight: 80, initData: initDataFor(ALI) });
 
   const u = await api('GET', `/api/users/${ali.id}`, undefined, auth());
   assert.equal(u.status, 200);
@@ -191,7 +257,7 @@ test('GET /api/users/:id va GET /api/calculations/:userId — tarix', async () =
   assert.equal((await api('GET', '/api/calculations/9999', undefined, auth())).status, 404);
 
   const all = await api('GET', '/api/calculations', undefined, auth());
-  assert.equal(all.body.total, 4);
+  assert.equal(all.body.total, 2);
   assert.equal(all.body.items[0].user.firstName, 'Ali');
 });
 

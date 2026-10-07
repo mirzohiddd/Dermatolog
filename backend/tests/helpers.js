@@ -34,5 +34,9 @@ export function fakeTelegram() {
       calls.push({ method: 'sendMessage', chat_id: String(chatId), text, ...extra });
       return { message_id: calls.length };
     },
+    async editMessageText(chatId, messageId, inlineMessageId, text, extra) {
+      calls.push({ method: 'editMessageText', chat_id: String(chatId), message_id: messageId, text, ...extra });
+      return true;
+    },
   };
 }
